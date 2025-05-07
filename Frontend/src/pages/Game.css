@@ -1,0 +1,108 @@
+.loading-container,
+.error-container {
+  max-width: 800px;
+  margin: 100px auto;
+  padding: 30px;
+  text-align: center;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.error-container {
+  color: #e74c3c;
+}
+
+.error-container button,
+.waiting-room button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-top: 20px;
+}
+
+.error-container button:hover,
+.waiting-room button:hover:not(:disabled) {
+  background-color: #2980b9;
+}
+
+.waiting-room {
+  max-width: 800px;
+  margin: 50px auto;
+  padding: 30px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.game-details {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+  margin: 20px 0;
+}
+
+.players-list {
+  margin: 20px 0;
+}
+
+.players-list ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.players-list li {
+  padding: 10px;
+  margin: 5px 0;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.waiting-room-actions {
+  margin-top: 30px;
+}
+
+.start-game-button {
+  background-color: #2ecc71 !important;
+  margin-right: 10px;
+}
+
+.start-game-button:hover:not(:disabled) {
+  background-color: #27ae60 !important;
+}
+
+.start-game-button:disabled {
+  background-color: #95a5a6 !important;
+  cursor: not-allowed;
+}
+
+.return-button {
+  background-color: #e74c3c !important;
+}
+
+.return-button:hover {
+  background-color: #c0392b !important;
+}
+
+@media (max-width: 768px) {
+  .waiting-room {
+    margin: 20px;
+    padding: 20px;
+  }
+  
+  .waiting-room-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .start-game-button,
+  .return-button {
+    margin: 5px 0;
+  }
+}

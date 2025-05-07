@@ -1,0 +1,55 @@
+.player-hand {
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: rgba(240, 240, 240, 0.8);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .player-hand h3 {
+    margin-top: 0;
+    color: #333;
+    text-align: center;
+  }
+  
+  .cards-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  
+  .selected-cards {
+    margin-top: 20px;
+    text-align: center;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.6);
+    border-radius: 8px;
+  }
+  
+  .selected-cards h4 {
+    margin-top: 0;
+    color: #333;
+  }
+  
+  .play-combo-button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 10px;
+  }
+  
+  .play-combo-button:hover:not(:disabled) {
+    background-color: #2980b9;
+  }
+  
+  .play-combo-button:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+  }

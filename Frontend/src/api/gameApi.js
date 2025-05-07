@@ -1,70 +1,92 @@
-// gameApi.js - API client with SignalR integration
-import * as signalR from '@microsoft/signalr';
-import axios from 'axios';
+import axios from "./apiClient";
 
-const API_URL = process.env.API_URL || 'http://localhost:5000';
+// Base URL for game endpoints
+const BASE_URL = "/api/games";
 
-// SignalR connection
-let connection = null;
+export const gameApi = {
+  // Get all active games
+  getActiveGames: async () => {
+    const response = await axios.get(BASE_URL);
+    return response.data;
+  },
 
-// Initialize SignalR connection
-export const initializeSignalR = (gameId, onUpdateGameState) => {
-  connection = new signalR.HubConnectionBuilder()
-    .withUrl(`${API_URL}/gamehub`)
-    .withAutomaticReconnect()
-    .build();
+  // Get a specific game
+  getGame: async (gameId) => {
+    const response = await axios.get(`${BASE_URL}/${gameId}`);
+    return response.data;
+  },
 
-  connection.on('UpdateGameState', onUpdateGameState);
+  // Get games for a player
+  getPlayerGames: async (playerId) => {
+    const response = await axios.get(`${BASE_URL}/player/${playerId}`);
+    return response.data;
+  },
 
-  connection.start()
-    .then(() => connection.invoke('JoinGame', gameId))
-    .catch(err => console.error('SignalR Connection Error: ', err));
+  // Create a new game
+  createGame: async (gameData) => {
+    const response = await axios.post(BASE_URL, gameData);
+    return response.data;
+  },
 
-  return connection;
-};
+  // Join a game
+  joinGame: async (gameId, playerId) => {
+    const response = await axios.post(`${BASE_URL}/${gameId}/join`, playerId);
+    return response.data;
+  },
 
-// Game API calls
-export const createGame = async (gameName, hostPlayerId) => {
-  const response = await axios.post(`${API_URL}/api/games`, {
-    name: gameName,
-    hostPlayerId
-  });
-  return response.data;
-};
+  // Start a game
+  startGame: async (gameId) => {
+    const response = await axios.post(`${BASE_URL}/${gameId}/start`);
+    return response.data;
+  },
 
-export const joinGame = async (gameId, playerId) => {
-  const response = await axios.post(`${API_URL}/api/games/${gameId}/join`, {
-    playerId
-  });
-  return response.data;
-};
+  // Get game state
+  getGameState: async (gameId) => {
+    const response = await axios.get(`${BASE_URL}/${gameId}/state`);
+    return response.data;
+  },
 
-export const startGame = async (gameId) => {
-  const response = await axios.post(`${API_URL}/api/games/${gameId}/start`);
-  return response.data;
-};
+  // Play a card
+  playCard: async (gameId, playCardData) => {
+    const response = await axios.post(
+      `${BASE_URL}/${gameId}/actions/play-card`,
+      playCardData
+    );
+    return response.data;
+  },
 
-export const playCard = async (gameId, playerId, cardId, targetPlayerId = null) => {
-  const response = await axios.post(`${API_URL}/api/games/${gameId}/play`, {
-    playerId,
-    cardId,
-    targetPlayerId
-  });
-  return response.data;
-};
+  // Draw a card
+  drawCard: async (gameId, drawCardData) => {
+    const response = await axios.post(
+      `${BASE_URL}/${gameId}/actions/draw-card`,
+      drawCardData
+    );
+    return response.data;
+  },
 
-export const drawCard = async (gameId, playerId) => {
-  const response = await axios.post(`${API_URL}/api/games/${gameId}/draw`, {
-    playerId
-  });
-  return response.data;
-};
+  // Play a special combo
+  playCombo: async (gameId, playComboData) => {
+    const response = await axios.post(
+      `${BASE_URL}/${gameId}/actions/play-combo`,
+      playComboData
+    );
+    return response.data;
+  },
 
-// Clean up SignalR connection
-export const disconnectSignalR = async (gameId) => {
-  if (connection) {
-    await connection.invoke('LeaveGame', gameId);
-    await connection.stop();
-    connection = null;
-  }
+  // See the future
+  seeFuture: async (gameId, playerId) => {
+    const response = await axios.get(
+      `${BASE_URL}/${gameId}/actions/see-future?playerId=${playerId}`
+    );
+    return response.data;
+  },
+
+  // Defuse an exploding kitten
+  defuseKitten: async (gameId, defuseData) => {
+    const response = await axios.post(
+      `${BASE_URL}/${gameId}/actions/defuse-kitten`,
+      defuseData
+    );
+    return response.data;
+  },
 };

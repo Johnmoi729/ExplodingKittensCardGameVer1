@@ -1,0 +1,210 @@
+.game-board {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .game-info {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .game-status {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 10px;
+    border-radius: 8px;
+  }
+  
+  .game-area {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .deck-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  
+  .deck {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+  }
+  
+  .draw-pile, .discard-pile {
+    text-align: center;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.6);
+    border-radius: 8px;
+  }
+  
+  .card-placeholder {
+    width: 150px;
+    height: 210px;
+    border-radius: 10px;
+    border: 2px dashed #ccc;
+    margin: 10px auto;
+  }
+  
+  .draw-button {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 10px;
+  }
+  
+  .draw-button:hover {
+    background-color: #c0392b;
+  }
+  
+  .game-actions {
+    text-align: center;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    min-height: 100px;
+  }
+  
+  .players-area {
+    margin-top: 20px;
+    text-align: center;
+  }
+  
+  .other-players {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 10px;
+  }
+  
+  .player {
+    width: 150px;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .player:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .player.exploded {
+    background-color: rgba(231, 76, 60, 0.3);
+    color: #7f8c8d;
+  }
+  
+  .player.selected {
+    border: 3px solid #3498db;
+    transform: translateY(-5px);
+  }
+  
+  .exploded-label {
+    color: #e74c3c;
+    font-weight: bold;
+  }
+  
+  .target-indicator {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background-color: #3498db;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+  
+  .loading, .error {
+    text-align: center;
+    margin: 50px 0;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+  }
+  
+  .error {
+    color: #e74c3c;
+  }
+  
+  /* Modal for See Future */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 800px;
+    width: 90%;
+    text-align: center;
+  }
+  
+  .future-cards {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin: 20px 0;
+  }
+  
+  .future-card {
+    text-align: center;
+  }
+  
+  .modal-content button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  
+  .modal-content button:hover {
+    background-color: #2980b9;
+  }
+  
+  @media (max-width: 768px) {
+    .game-status {
+      flex-direction: column;
+    }
+    
+    .deck {
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .future-cards {
+      flex-direction: column;
+      align-items: center;
+    }
+  }

@@ -17,15 +17,18 @@ namespace ExplodingKittens.Application.Services
         private readonly IGameRepository _gameRepository;
         private readonly IGameStateRepository _gameStateRepository;
         private readonly IUserRepository _userRepository;
+        private readonly ICardRepository _cardRepository; // Add this field
 
         public GameService(
             IGameRepository gameRepository,
             IGameStateRepository gameStateRepository,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            ICardRepository cardRepository) // Add this parameter)
         {
             _gameRepository = gameRepository;
             _gameStateRepository = gameStateRepository;
             _userRepository = userRepository;
+            _cardRepository = cardRepository; // Initialize the field
         }
 
         public async Task<GameDto> CreateGameAsync(CreateGameDto createGameDto)
@@ -184,20 +187,16 @@ namespace ExplodingKittens.Application.Services
             game.UpdatedAt = DateTime.UtcNow;
             await _gameRepository.UpdateAsync(gameId, game);
 
-            // Initialize game state (will be implemented in Week 2)
-            // For now, just create an empty GameState
-            var gameState = new GameState
-            {
-                GameId = gameId,
-                DrawPile = new List<string>(),
-                DiscardPile = new List<string>(),
-                PlayerHands = new Dictionary<string, List<string>>(),
-                ExplodedPlayers = new List<string>(),
-                AttackCount = 0,
-                LastAction = "Game Started",
-                UpdatedAt = DateTime.UtcNow
-            };
+            // Create the game engine
+            var gameEngine = new GameEngine.GameEngine();
 
+            // Get all cards
+            var allCards = await _cardRepository.GetAllAsync();
+
+            // Initialize game state
+            var gameState = await gameEngine.InitializeGameAsync(game, allCards);
+
+            // Save the game state
             await _gameStateRepository.AddAsync(gameState);
 
             return true;

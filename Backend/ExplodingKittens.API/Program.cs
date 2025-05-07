@@ -23,6 +23,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IGameRepository, GameRepository>();
 builder.Services.AddScoped<IGameStateRepository, GameStateRepository>();
 builder.Services.AddScoped<ICardRepository, CardRepository>();
+builder.Services.AddTransient<ExplodingKittens.Infrastructure.Data.Initialization.DatabaseInitializer>();
 
 // Configure JWT
 builder.Services.Configure<JwtSettings>(
@@ -32,6 +33,10 @@ builder.Services.Configure<JwtSettings>(
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IGameActionService, GameActionService>();
+builder.Services.AddScoped<IGameStateService, GameStateService>();
+
+builder.Services.AddHttpContextAccessor();
 
 // Configure authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
@@ -108,4 +113,11 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<GameHub>("/gamehub");
 
+// Add this near the end of the file, before app.Run()
+// Initialize the database
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<ExplodingKittens.Infrastructure.Data.Initialization.DatabaseInitializer>();
+    await initializer.InitializeAsync();
+}
 app.Run();
