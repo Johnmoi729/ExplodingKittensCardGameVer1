@@ -1,0 +1,6 @@
+@ExplodingKittens.API_HostAddress = http://localhost:5009
+
+GET {{ExplodingKittens.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
