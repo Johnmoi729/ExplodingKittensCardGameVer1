@@ -1,0 +1,106 @@
+trigger:
+  - main
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  buildConfiguration: "Release"
+  dotnetVersion: "9.0.x"
+  backendProjectPath: "Backend/ExplodingKittens.API/ExplodingKittens.API.csproj"
+  frontendProjectPath: "Frontend"
+  backendAppName: "exploding-kittens-api"
+  frontendAppName: "exploding-kittens-web"
+  azureSubscription: "YourAzureSubscription"
+  cosmosDbAccountName: "exploding-kittens-db"
+
+stages:
+  - stage: Build
+    jobs:
+      - job: BuildBackend
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              packageType: "sdk"
+              version: "$(dotnetVersion)"
+
+          - script: dotnet restore
+            displayName: "Restore NuGet packages"
+            workingDirectory: "Backend"
+
+          - script: dotnet build --configuration $(buildConfiguration) --no-restore
+            displayName: "Build backend"
+            workingDirectory: "Backend"
+
+          - script: dotnet test --configuration $(buildConfiguration) --no-build
+            displayName: "Run tests"
+            workingDirectory: "Backend"
+
+          - script: dotnet publish $(backendProjectPath) --configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/backend
+            displayName: "Publish backend"
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: "$(Build.ArtifactStagingDirectory)/backend"
+              artifactName: "backend"
+
+      - job: BuildFrontend
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: "18.x"
+
+          - script: |
+              npm ci
+              npm run build
+            displayName: "Build frontend"
+            workingDirectory: "$(frontendProjectPath)"
+
+          - task: CopyFiles@2
+            inputs:
+              sourceFolder: "$(frontendProjectPath)/build"
+              contents: "**"
+              targetFolder: "$(Build.ArtifactStagingDirectory)/frontend"
+            displayName: "Copy frontend build files"
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: "$(Build.ArtifactStagingDirectory)/frontend"
+              artifactName: "frontend"
+
+  - stage: Deploy
+    dependsOn: Build
+    jobs:
+      - job: DeployBackend
+        steps:
+          - task: DownloadBuildArtifacts@0
+            inputs:
+              buildType: "current"
+              downloadType: "single"
+              artifactName: "backend"
+              downloadPath: "$(System.ArtifactsDirectory)"
+
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: "$(azureSubscription)"
+              appType: "webApp"
+              appName: "$(backendAppName)"
+              package: "$(System.ArtifactsDirectory)/backend"
+              deploymentMethod: "auto"
+
+      - job: DeployFrontend
+        steps:
+          - task: DownloadBuildArtifacts@0
+            inputs:
+              buildType: "current"
+              downloadType: "single"
+              artifactName: "frontend"
+              downloadPath: "$(System.ArtifactsDirectory)"
+
+          - task: AzureStaticWebApp@0
+            inputs:
+              azureSubscription: "$(azureSubscription)"
+              appName: "$(frontendAppName)"
+              buildDirectory: "$(System.ArtifactsDirectory)/frontend"
+              apiDirectory: ""
+              outputLocation: ""

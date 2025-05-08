@@ -1,30 +1,43 @@
 import PropTypes from "prop-types";
 import React, { useEffect, useState } from "react";
 import { useGame } from "../../../contexts/GameContext";
+import ActivityLog from "../ActivityLog/ActivityLog";
 import Card from "../Card/Card";
+import GameInfo from "../GameInfo/GameInfo";
+import DefuseKittenModal from "../Modals/DefuseKittenModal";
+import GameOverModal from "../Modals/GameOverModal";
+import SeeFutureModal from "../Modals/SeeFutureModal";
 import PlayerHand from "../PlayerHand/PlayerHand";
+import PlayersList from "../PlayersList/PlayersList";
 import "./GameBoard.css";
 
-/**
- * GameBoard component representing the main game board
- * @param {Object} props - Component props
- */
 const GameBoard = ({ gameId }) => {
   const {
     currentGame,
     gameState,
+    playerStatus,
     loading,
     error,
     fetchGame,
     playCard,
     drawCard,
-    playCombo,
-    seeFuture,
     seeFutureCards,
+    isExploding,
+    winner,
+    gameActivity,
+    selectedCards,
+    targetPlayer,
+    selectCard,
+    isSelected,
+    selectTarget,
+    clearSelections,
+    playSelectedCards,
+    getPlayerName,
   } = useGame();
 
-  const [selectedTargetPlayer, setSelectedTargetPlayer] = useState(null);
-  const [showSeeFutureCards, setShowSeeFutureCards] = useState(false);
+  const [showSeeFutureModal, setShowSeeFutureModal] = useState(false);
+  const [showDefuseModal, setShowDefuseModal] = useState(false);
+  const [showGameOverModal, setShowGameOverModal] = useState(false);
 
   // Load game data on component mount
   useEffect(() => {
@@ -33,28 +46,62 @@ const GameBoard = ({ gameId }) => {
     }
   }, [gameId, fetchGame]);
 
-  // Reset selected target player when turns change
+  // Show defuse modal when player is exploding
   useEffect(() => {
-    if (gameState) {
-      setSelectedTargetPlayer(null);
+    if (isExploding) {
+      setShowDefuseModal(true);
+    } else {
+      setShowDefuseModal(false);
     }
-  }, [gameState?.currentPlayerId]);
+  }, [isExploding]);
 
-  if (loading) {
-    return <div className="loading">Loading game...</div>;
+  // Show game over modal when there's a winner
+  useEffect(() => {
+    if (winner) {
+      setShowGameOverModal(true);
+    }
+  }, [winner]);
+
+  if (loading && !gameState) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Loading game...</p>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="error">{error}</div>;
+    return (
+      <div className="error-container">
+        <h2>Error</h2>
+        <p>{error}</p>
+        <button onClick={() => (window.location.href = "/")}>
+          Return to Main Menu
+        </button>
+      </div>
+    );
   }
 
   if (!currentGame || !gameState) {
-    return <div className="error">Game not found</div>;
+    return (
+      <div className="error-container">
+        <h2>Game Not Found</h2>
+        <p>
+          The game you're looking for doesn't exist or you don't have access to
+          it.
+        </p>
+        <button onClick={() => (window.location.href = "/")}>
+          Return to Main Menu
+        </button>
+      </div>
+    );
   }
 
   // Get current player data
   const currentUser = JSON.parse(localStorage.getItem("user"));
   const isCurrentPlayersTurn = gameState.currentPlayerId === currentUser.id;
+  const isGameCompleted = currentGame.status === "completed";
   const currentPlayerHand = gameState.playerHands?.[currentUser.id] || [];
 
   // Get other players data
@@ -63,73 +110,74 @@ const GameBoard = ({ gameId }) => {
   );
 
   // Handle playing a card
-  const handlePlayCard = async (card) => {
+  const handlePlayCard = (card) => {
     if (!isCurrentPlayersTurn) return;
 
-    // Check if the card needs a target player
-    if (card.type === "favor" || card.type === "cat_card") {
-      if (!selectedTargetPlayer) {
-        alert("Please select a target player");
-        return;
-      }
-
-      await playCard(card.id, selectedTargetPlayer);
+    // For cards that need targeting
+    if (
+      card.type === "favor" ||
+      (selectedCards.length > 0 && selectedCards[0].type === "cat_card")
+    ) {
+      selectCard(card);
+    } else if (card.type === "see_future") {
+      // Show the see future modal after playing the card
+      playCard(card.id).then(() => {
+        setShowSeeFutureModal(true);
+      });
     } else {
-      await playCard(card.id);
+      playCard(card.id);
     }
-  };
-
-  // Handle playing a combo
-  const handlePlayCombo = async (cards) => {
-    if (!isCurrentPlayersTurn || !selectedTargetPlayer) {
-      alert("Please select a target player");
-      return;
-    }
-
-    await playCombo(
-      cards.map((c) => c.id),
-      selectedTargetPlayer
-    );
-  };
-
-  // Handle See Future card effect
-  const handleSeeFuture = async () => {
-    if (!isCurrentPlayersTurn) return;
-
-    await seeFuture();
-    setShowSeeFutureCards(true);
   };
 
   // Handle drawing a card
-  const handleDrawCard = async () => {
-    if (!isCurrentPlayersTurn) return;
+  const handleDrawCard = () => {
+    if (!isCurrentPlayersTurn || isGameCompleted) return;
 
-    await drawCard();
+    drawCard();
+  };
+
+  // Get card playability status
+  const isCardPlayable = (card) => {
+    if (!isCurrentPlayersTurn || isGameCompleted) return false;
+
+    // Check for cards that require target selection
+    if ((card.type === "favor" || card.type === "cat_card") && !targetPlayer) {
+      return false;
+    }
+
+    return true;
   };
 
   return (
     <div className="game-board">
-      <div className="game-info">
-        <h2>{currentGame.name}</h2>
-        <div className="game-status">
-          <p>Status: {currentGame.status}</p>
-          <p>Turn: {gameState.turnNumber}</p>
-          <p>
-            Current Player:{" "}
-            {gameState.currentPlayerId === currentUser.id
-              ? "You"
-              : gameState.currentPlayerId}
-          </p>
-        </div>
+      <div className="game-header">
+        <GameInfo
+          gameName={currentGame.name}
+          gameStatus={currentGame.status}
+          turnNumber={gameState.turnNumber}
+          currentPlayer={getPlayerName(gameState.currentPlayerId)}
+          lastAction={gameState.lastAction}
+        />
       </div>
 
-      <div className="game-area">
-        <div className="deck-area">
-          <div className="deck">
+      <div className="game-content">
+        <div className="left-panel">
+          <ActivityLog activities={gameActivity} />
+        </div>
+
+        <div className="center-panel">
+          <div className="deck-area">
             <div className="draw-pile">
               <h3>Draw Pile ({gameState.drawPileCount})</h3>
-              <div className="card card-back" onClick={handleDrawCard} />
-              {isCurrentPlayersTurn && (
+              <div
+                className={`card card-back ${
+                  isCurrentPlayersTurn && !isGameCompleted
+                    ? "card-playable"
+                    : ""
+                }`}
+                onClick={handleDrawCard}
+              />
+              {isCurrentPlayersTurn && !isGameCompleted && (
                 <button className="draw-button" onClick={handleDrawCard}>
                   Draw a Card
                 </button>
@@ -148,64 +196,96 @@ const GameBoard = ({ gameId }) => {
             </div>
           </div>
 
-          <div className="game-actions">
-            <h3>Actions</h3>
-            <p>{gameState.lastAction}</p>
-          </div>
+          {playerStatus && (
+            <div className="game-status">
+              <p>
+                {playerStatus.isPlayerTurn
+                  ? "It's your turn!"
+                  : `Your turn in ${playerStatus.turnsUntilPlayerTurn} turns`}
+              </p>
+              {playerStatus.isPlayerExploded && (
+                <p className="exploded-status">
+                  You have exploded! Game over for you.
+                </p>
+              )}
+              <p>Players remaining: {playerStatus.remainingPlayers}</p>
+              <p>Cards in deck: {playerStatus.remainingCards}</p>
+            </div>
+          )}
+
+          {selectedCards.length > 0 && (
+            <div className="selected-cards-info">
+              <h3>Selected Cards</h3>
+              <div className="selected-cards-container">
+                {selectedCards.map((card) => (
+                  <div key={card.id} className="selected-card">
+                    <Card card={card} isPlayable={false} />
+                  </div>
+                ))}
+              </div>
+              {targetPlayer ? (
+                <div className="target-info">
+                  <p>Target: {getPlayerName(targetPlayer)}</p>
+                  <button className="play-button" onClick={playSelectedCards}>
+                    Play {selectedCards.length > 1 ? "Combo" : "Card"}
+                  </button>
+                  <button className="cancel-button" onClick={clearSelections}>
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <p>Select a target player</p>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="players-area">
-          <h3>Other Players</h3>
-          <div className="other-players">
-            {otherPlayers.map((playerId) => {
-              const isExploded = gameState.explodedPlayers?.includes(playerId);
-              const handSize = gameState.playerHands?.[playerId]?.length || 0;
-
-              return (
-                <div
-                  key={playerId}
-                  className={`player ${isExploded ? "exploded" : ""} ${
-                    selectedTargetPlayer === playerId ? "selected" : ""
-                  }`}
-                  onClick={() => setSelectedTargetPlayer(playerId)}
-                >
-                  <p>Player: {playerId}</p>
-                  <p>Cards: {handSize}</p>
-                  {isExploded && <p className="exploded-label">EXPLODED</p>}
-                  {selectedTargetPlayer === playerId && (
-                    <div className="target-indicator">TARGET</div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+        <div className="right-panel">
+          <PlayersList
+            players={currentGame.players}
+            currentPlayer={currentUser.id}
+            currentTurn={gameState.currentPlayerId}
+            explodedPlayers={gameState.explodedPlayers || []}
+            targetPlayer={targetPlayer}
+            onSelectTarget={selectTarget}
+            getPlayerName={getPlayerName}
+            playerHands={gameState.playerHands}
+          />
         </div>
       </div>
 
-      <PlayerHand
-        cards={currentPlayerHand}
-        isCurrentPlayer={isCurrentPlayersTurn}
-        onPlayCard={handlePlayCard}
-        onPlayCombo={handlePlayCombo}
+      <div className="player-hand-container">
+        <PlayerHand
+          cards={currentPlayerHand}
+          isCurrentPlayer={isCurrentPlayersTurn}
+          onPlayCard={handlePlayCard}
+          isCardPlayable={isCardPlayable}
+          selectedCards={selectedCards.map((c) => c.id)}
+          onSelectCard={selectCard}
+          isGameCompleted={isGameCompleted}
+        />
+      </div>
+
+      {/* Modals */}
+      <SeeFutureModal
+        isOpen={showSeeFutureModal}
+        onClose={() => setShowSeeFutureModal(false)}
+        cards={seeFutureCards}
       />
 
-      {/* See Future Modal */}
-      {showSeeFutureCards && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Top 3 Cards</h3>
-            <div className="future-cards">
-              {seeFutureCards.map((card, index) => (
-                <div key={index} className="future-card">
-                  <Card card={card} />
-                  <p>Position: {index + 1}</p>
-                </div>
-              ))}
-            </div>
-            <button onClick={() => setShowSeeFutureCards(false)}>Close</button>
-          </div>
-        </div>
-      )}
+      <DefuseKittenModal
+        isOpen={showDefuseModal}
+        onClose={() => setShowDefuseModal(false)}
+        deckSize={gameState.drawPileCount}
+        defuseCards={currentPlayerHand.filter((c) => c.type === "defuse")}
+      />
+
+      <GameOverModal
+        isOpen={showGameOverModal}
+        onClose={() => setShowGameOverModal(false)}
+        winner={winner}
+        isWinner={winner === "You"}
+      />
     </div>
   );
 };

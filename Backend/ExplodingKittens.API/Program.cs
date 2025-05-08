@@ -6,6 +6,7 @@ using ExplodingKittens.Infrastructure.Data.Context;
 using ExplodingKittens.Infrastructure.Data.Configurations;
 using ExplodingKittens.Infrastructure.Data.Repositories;
 using ExplodingKittens.Infrastructure.Services; // Updated namespace
+using ExplodingKittens.API.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -109,6 +110,9 @@ app.UseHttpsRedirection();
 app.UseCors("CorsPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Add this after app.UseAuthentication() and before app.MapControllers()
+app.UseExceptionHandlerMiddleware();
 
 app.MapControllers();
 app.MapHub<GameHub>("/gamehub");

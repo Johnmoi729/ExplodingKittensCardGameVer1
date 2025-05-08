@@ -13,5 +13,6 @@ namespace ExplodingKittens.Application.Interfaces
         Task<GameStateDto> PlayComboAsync(string gameId, PlayComboDto playComboDto);
         Task<GameStateDto> DefuseKittenAsync(string gameId, DefuseKittenDto defuseKittenDto);
         Task<SeeFutureResultDto> SeeFutureAsync(string gameId, string playerId);
+        Task<GameStatusDto> GetGameStatusAsync(string gameId, string playerId);
     }
 }

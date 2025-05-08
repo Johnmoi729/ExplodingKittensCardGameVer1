@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ExplodingKittens.Domain.Constants;
 using ExplodingKittens.Domain.Entities;
+using ExplodingKittens.GameEngine.Models;
 using ExplodingKittens.Domain.Enums;
 
 namespace ExplodingKittens.GameEngine
@@ -365,6 +366,110 @@ namespace ExplodingKittens.GameEngine
             return gameState;
         }
 
+        /// <summary>
+        /// Gets the current game status, including whose turn it is and available actions
+        /// </summary>
+        public GameStatusInfo GetGameStatus(GameState gameState, Game game, string requestingPlayerId)
+        {
+            var isPlayerTurn = game.CurrentPlayerId == requestingPlayerId;
+            var isPlayerExploded = gameState.ExplodedPlayers.Contains(requestingPlayerId);
+            var hasDefuseCard = gameState.PlayerHands.ContainsKey(requestingPlayerId) &&
+                                 gameState.PlayerHands[requestingPlayerId].Any(c =>
+                                    GetCardAsync(c).Result?.Type == "defuse");
+
+            var activePlayers = game.Players.Except(gameState.ExplodedPlayers).ToList();
+            var playerPosition = activePlayers.IndexOf(requestingPlayerId);
+            var currentPlayerPosition = activePlayers.IndexOf(game.CurrentPlayerId);
+            var turnsUntilPlayerTurn = playerPosition <= currentPlayerPosition ?
+                activePlayers.Count - (currentPlayerPosition - playerPosition) :
+                playerPosition - currentPlayerPosition;
+
+            if (turnsUntilPlayerTurn == activePlayers.Count)
+            {
+                turnsUntilPlayerTurn = 0;
+            }
+
+            return new GameStatusInfo
+            {
+                IsPlayerTurn = isPlayerTurn,
+                IsPlayerExploded = isPlayerExploded,
+                TurnsUntilPlayerTurn = isPlayerTurn ? 0 : turnsUntilPlayerTurn,
+                HasDefuseCard = hasDefuseCard,
+                RemainingPlayers = activePlayers.Count,
+                RemainingCards = gameState.DrawPile.Count,
+                CanPlayCombo = CanPlayCombo(gameState, requestingPlayerId)
+            };
+        }
+
+        /// <summary>
+        /// Checks if the player can play a combo (2 or 3 of a kind)
+        /// </summary>
+        private bool CanPlayCombo(GameState gameState, string playerId)
+        {
+            if (!gameState.PlayerHands.ContainsKey(playerId))
+                return false;
+
+            var hand = gameState.PlayerHands[playerId];
+            var cardsByName = new Dictionary<string, int>();
+
+            foreach (var cardId in hand)
+            {
+                var card = GetCardAsync(cardId).Result;
+                if (card == null) continue;
+
+                if (!cardsByName.ContainsKey(card.Name))
+                    cardsByName[card.Name] = 0;
+
+                cardsByName[card.Name]++;
+            }
+
+            return cardsByName.Any(kvp => kvp.Value >= 2);
+        }
+
+        /// <summary>
+        /// Handles the end of the game
+        /// </summary>
+        public async Task<Game> HandleGameEndAsync(Game game, GameState gameState)
+        {
+            var activePlayers = game.Players.Except(gameState.ExplodedPlayers).ToList();
+
+            if (activePlayers.Count <= 1)
+            {
+                game.Status = "completed";
+
+                if (activePlayers.Count == 1)
+                {
+                    var winnerId = activePlayers.First();
+                    gameState.LastAction = $"Game over! Player {winnerId} wins!";
+
+                    // Update winner stats
+                    await UpdatePlayerStatsAsync(game.Players, winnerId);
+                }
+                else
+                {
+                    gameState.LastAction = "Game over! It's a tie!";
+                }
+
+                game.UpdatedAt = DateTime.UtcNow;
+            }
+
+            return game;
+        }
+
+        // Inside the GameEngine class, add this missing method:
+        private async Task UpdatePlayerStatsAsync(List<string> players, string winnerId)
+        {
+            // This method would normally update player statistics in a database
+            // In a real implementation, you would inject IUserRepository and update stats
+
+            // For now, we'll leave this as a placeholder
+            // In an actual implementation you would:
+            // 1. Increment gamesPlayed for all participants
+            // 2. Increment gamesWon for the winner
+
+            await Task.CompletedTask; // Placeholder for async operation
+        }
+
         #region Card Effect Methods
 
         private GameState ApplyAttackEffect(GameState gameState, Game game)
@@ -483,6 +588,14 @@ namespace ExplodingKittens.GameEngine
             // This is a placeholder. In your real implementation, you'd call your repository.
             // For now, return empty list to prevent compilation errors
             return Task.FromResult(Enumerable.Empty<Card>());
+        }
+
+        // Helper method for mocking in tests
+        protected virtual Task<Card> GetCardAsync(string cardId)
+        {
+            // Implementation would call the card repository
+            // For tests, this can be overridden
+            return Task.FromResult<Card>(null);
         }
 
         #endregion

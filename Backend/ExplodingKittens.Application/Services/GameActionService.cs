@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ExplodingKittens.Application.DTOs;
 using ExplodingKittens.Application.Interfaces;
+using ExplodingKittens.Application.Exceptions;
 using ExplodingKittens.Domain.Entities;
 using ExplodingKittens.Domain.Constants;
 using ExplodingKittens.GameEngine;
@@ -230,6 +231,40 @@ namespace ExplodingKittens.Application.Services
                     Effect = c.Effect,
                     ImageUrl = c.ImageUrl
                 }).ToList()
+            };
+        }
+
+        /// <summary>
+        /// Gets the current game status for a specific player
+        /// </summary>
+        public async Task<GameStatusDto> GetGameStatusAsync(string gameId, string playerId)
+        {
+            var game = await _gameRepository.GetByIdAsync(gameId);
+            if (game == null)
+            {
+                throw new NotFoundException("Game not found");
+            }
+
+            var gameState = await _gameStateRepository.GetByGameIdAsync(gameId);
+            if (gameState == null)
+            {
+                throw new NotFoundException("Game state not found");
+            }
+
+            var statusInfo = _gameEngine.GetGameStatus(gameState, game, playerId);
+
+            // Map to DTO
+            return new GameStatusDto
+            {
+                IsPlayerTurn = statusInfo.IsPlayerTurn,
+                IsPlayerExploded = statusInfo.IsPlayerExploded,
+                TurnsUntilPlayerTurn = statusInfo.TurnsUntilPlayerTurn,
+                HasDefuseCard = statusInfo.HasDefuseCard,
+                RemainingPlayers = statusInfo.RemainingPlayers,
+                RemainingCards = statusInfo.RemainingCards,
+                CanPlayCombo = statusInfo.CanPlayCombo,
+                GameStatus = game.Status,
+                LastAction = gameState.LastAction
             };
         }
 

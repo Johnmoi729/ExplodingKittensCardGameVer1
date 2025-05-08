@@ -1,0 +1,160 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "appServicePlanName": {
+        "type": "string",
+        "defaultValue": "exploding-kittens-asp",
+        "metadata": {
+          "description": "Name of the App Service Plan"
+        }
+      },
+      "backendAppName": {
+        "type": "string",
+        "defaultValue": "exploding-kittens-api",
+        "metadata": {
+          "description": "Name of the backend App Service"
+        }
+      },
+      "frontendAppName": {
+        "type": "string",
+        "defaultValue": "exploding-kittens-web",
+        "metadata": {
+          "description": "Name of the frontend Static Web App"
+        }
+      },
+      "cosmosDbAccountName": {
+        "type": "string",
+        "defaultValue": "exploding-kittens-db",
+        "metadata": {
+          "description": "Name of the CosmosDB account with MongoDB API"
+        }
+      },
+      "location": {
+        "type": "string",
+        "defaultValue": "[resourceGroup().location]",
+        "metadata": {
+          "description": "Location for all resources"
+        }
+      },
+      "jwtSecret": {
+        "type": "securestring",
+        "metadata": {
+          "description": "Secret key for JWT token generation"
+        }
+      }
+    },
+    "resources": [
+      {
+        "type": "Microsoft.Web/serverfarms",
+        "apiVersion": "2022-03-01",
+        "name": "[parameters('appServicePlanName')]",
+        "location": "[parameters('location')]",
+        "sku": {
+          "name": "B1",
+          "tier": "Basic"
+        },
+        "properties": {
+          "reserved": false
+        }
+      },
+      {
+        "type": "Microsoft.Web/sites",
+        "apiVersion": "2022-03-01",
+        "name": "[parameters('backendAppName')]",
+        "location": "[parameters('location')]",
+        "dependsOn": [
+          "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+          "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))]"
+        ],
+        "properties": {
+          "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+          "siteConfig": {
+            "netFrameworkVersion": "v9.0",
+            "appSettings": [
+              {
+                "name": "ASPNETCORE_ENVIRONMENT",
+                "value": "Production"
+              },
+              {
+                "name": "MongoDbSettings__ConnectionString",
+                "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2022-05-15').connectionStrings[0].connectionString]"
+              },
+              {
+                "name": "JwtSettings__Secret",
+                "value": "[parameters('jwtSecret')]"
+              }
+            ],
+            "cors": {
+              "allowedOrigins": [
+                "[concat('https://', parameters('frontendAppName'), '.azurestaticapps.net')]"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "type": "Microsoft.Web/staticSites",
+        "apiVersion": "2022-03-01",
+        "name": "[parameters('frontendAppName')]",
+        "location": "[parameters('location')]",
+        "properties": {
+          "repositoryUrl": "",
+          "branch": "main",
+          "buildProperties": {
+            "appLocation": "Frontend",
+            "apiLocation": "",
+            "appArtifactLocation": "build"
+          }
+        },
+        "sku": {
+          "name": "Free",
+          "tier": "Free"
+        }
+      },
+      {
+        "type": "Microsoft.DocumentDB/databaseAccounts",
+        "apiVersion": "2022-05-15",
+        "name": "[parameters('cosmosDbAccountName')]",
+        "location": "[parameters('location')]",
+        "kind": "MongoDB",
+        "properties": {
+          "databaseAccountOfferType": "Standard",
+          "capabilities": [
+            {
+              "name": "EnableMongo"
+            }
+          ],
+          "apiProperties": {
+            "serverVersion": "4.2"
+          },
+          "consistencyPolicy": {
+            "defaultConsistencyLevel": "Session",
+            "maxStalenessPrefix": 100,
+            "maxIntervalInSeconds": 5
+          },
+          "locations": [
+            {
+              "locationName": "[parameters('location')]",
+              "failoverPriority": 0,
+              "isZoneRedundant": false
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": {
+      "backendUrl": {
+        "type": "string",
+        "value": "[concat('https://', parameters('backendAppName'), '.azurewebsites.net')]"
+      },
+      "frontendUrl": {
+        "type": "string",
+        "value": "[concat('https://', parameters('frontendAppName'), '.azurestaticapps.net')]"
+      },
+      "cosmosDbConnectionString": {
+        "type": "string",
+        "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2022-05-15').connectionStrings[0].connectionString]"
+      }
+    }
+  }

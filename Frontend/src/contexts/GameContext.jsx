@@ -9,13 +9,20 @@ const GameContext = createContext();
 export const useGame = () => useContext(GameContext);
 
 export const GameProvider = ({ children }) => {
+  // State variables
   const { user } = useAuth();
   const [currentGame, setCurrentGame] = useState(null);
   const [gameState, setGameState] = useState(null);
+  const [playerStatus, setPlayerStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [connection, setConnection] = useState(null);
   const [seeFutureCards, setSeeFutureCards] = useState([]);
+  const [isExploding, setIsExploding] = useState(false);
+  const [winner, setWinner] = useState(null);
+  const [gameActivity, setGameActivity] = useState([]);
+  const [selectedCards, setSelectedCards] = useState([]);
+  const [targetPlayer, setTargetPlayer] = useState(null);
 
   // Initialize or reset SignalR connection when the game changes
   useEffect(() => {
@@ -29,6 +36,24 @@ export const GameProvider = ({ children }) => {
       }
     };
   }, [currentGame, user]);
+
+  // Regularly poll for game status
+  useEffect(() => {
+    let statusInterval;
+
+    if (currentGame && gameState && user && !isExploding) {
+      // Poll for status every 3 seconds
+      statusInterval = setInterval(() => {
+        getPlayerStatus();
+      }, 3000);
+    }
+
+    return () => {
+      if (statusInterval) {
+        clearInterval(statusInterval);
+      }
+    };
+  }, [currentGame, gameState, user, isExploding]);
 
   // Initialize SignalR connection
   const initializeSignalRConnection = async () => {
@@ -44,26 +69,43 @@ export const GameProvider = ({ children }) => {
       // Set up event handlers
       newConnection.on("GameStateUpdated", (updatedGameState) => {
         setGameState(updatedGameState);
+
+        // Update activity log
+        if (updatedGameState.lastAction) {
+          addActivity(updatedGameState.lastAction);
+        }
+
+        // Check for winner
+        if (updatedGameState.gameStatus === "completed") {
+          const winnerName = getWinnerName(updatedGameState);
+          setWinner(winnerName);
+        }
       });
 
       newConnection.on("CardPlayed", (data) => {
-        console.log(`Player ${data.playerId} played ${data.cardName}`);
+        addActivity(
+          `Player ${getPlayerName(data.playerId)} played ${data.cardName}`
+        );
       });
 
       newConnection.on("CardDrawn", (data) => {
-        console.log(`Player ${data.playerId} drew a card`);
+        addActivity(`Player ${getPlayerName(data.playerId)} drew a card`);
       });
 
       newConnection.on("PlayerExploded", (data) => {
-        console.log(`Player ${data.playerId} exploded!`);
+        addActivity(`Player ${getPlayerName(data.playerId)} exploded!`);
+        if (data.playerId === user.id) {
+          setIsExploding(true);
+        }
       });
 
       newConnection.on("PlayerTurn", (data) => {
-        console.log(`It's player ${data.playerId}'s turn`);
+        addActivity(`It's player ${getPlayerName(data.playerId)}'s turn`);
       });
 
       newConnection.on("GameEnded", (data) => {
-        console.log(`Game ended. Player ${data.winnerId} wins!`);
+        addActivity(`Game ended. Player ${getPlayerName(data.winnerId)} wins!`);
+        setWinner(getPlayerName(data.winnerId));
       });
 
       newConnection.on("SeeFutureResult", (result) => {
@@ -84,6 +126,86 @@ export const GameProvider = ({ children }) => {
     }
   };
 
+  // Get player's current status
+  const getPlayerStatus = async () => {
+    if (!currentGame || !user) return;
+
+    try {
+      const status = await gameApi.getPlayerStatus(currentGame.id, user.id);
+      setPlayerStatus(status);
+
+      // Update game status if it's completed
+      if (
+        status.gameStatus === "completed" &&
+        currentGame.status !== "completed"
+      ) {
+        setCurrentGame({
+          ...currentGame,
+          status: "completed",
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching player status:", err);
+    }
+  };
+
+  // Add activity to log
+  const addActivity = (activity) => {
+    setGameActivity((prev) => [
+      ...prev,
+      { text: activity, timestamp: new Date() },
+    ]);
+  };
+
+  // Get player name
+  const getPlayerName = (playerId) => {
+    if (playerId === user.id) return "You";
+    return playerId;
+  };
+
+  // Get winner name
+  const getWinnerName = (gameState) => {
+    const explodedPlayers = gameState.explodedPlayers || [];
+    const allPlayers = currentGame?.players || [];
+
+    if (explodedPlayers.length === allPlayers.length - 1) {
+      const winnerId = allPlayers.find((id) => !explodedPlayers.includes(id));
+      return getPlayerName(winnerId);
+    }
+
+    return null;
+  };
+
+  // Select a card
+  const selectCard = (card) => {
+    if (isSelected(card.id)) {
+      setSelectedCards((prev) => prev.filter((c) => c.id !== card.id));
+    } else {
+      // For combos, only select cards with the same name
+      if (selectedCards.length > 0 && selectedCards[0].name !== card.name) {
+        return;
+      }
+
+      setSelectedCards((prev) => [...prev, card]);
+    }
+  };
+
+  // Check if a card is selected
+  const isSelected = (cardId) => {
+    return selectedCards.some((c) => c.id === cardId);
+  };
+
+  // Select a target player
+  const selectTarget = (playerId) => {
+    setTargetPlayer(playerId);
+  };
+
+  // Clear selections
+  const clearSelections = () => {
+    setSelectedCards([]);
+    setTargetPlayer(null);
+  };
+
   // Fetch game by ID
   const fetchGame = async (gameId) => {
     setLoading(true);
@@ -96,6 +218,9 @@ export const GameProvider = ({ children }) => {
       // Also fetch the game state
       const fetchedGameState = await gameApi.getGameState(gameId);
       setGameState(fetchedGameState);
+
+      // Get player status
+      await getPlayerStatus();
     } catch (err) {
       setError("Failed to fetch game");
       console.error("Error fetching game:", err);
@@ -176,6 +301,7 @@ export const GameProvider = ({ children }) => {
         cardId,
         targetPlayerId,
       });
+      clearSelections();
       return true;
     } catch (err) {
       setError("Failed to play card");
@@ -183,6 +309,22 @@ export const GameProvider = ({ children }) => {
       return false;
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Play selected cards
+  const playSelectedCards = async () => {
+    if (selectedCards.length === 0) return;
+
+    if (selectedCards.length === 1) {
+      // Single card
+      return playCard(selectedCards[0].id, targetPlayer);
+    } else {
+      // Combo
+      return playCombo(
+        selectedCards.map((c) => c.id),
+        targetPlayer
+      );
     }
   };
 
@@ -220,6 +362,7 @@ export const GameProvider = ({ children }) => {
         cardIds,
         targetPlayerId,
       });
+      clearSelections();
       return true;
     } catch (err) {
       setError("Failed to play combo");
@@ -263,6 +406,7 @@ export const GameProvider = ({ children }) => {
         defuseCardId,
         position,
       });
+      setIsExploding(false);
       return true;
     } catch (err) {
       setError("Failed to defuse kitten");
@@ -277,9 +421,15 @@ export const GameProvider = ({ children }) => {
   const value = {
     currentGame,
     gameState,
+    playerStatus,
     loading,
     error,
     seeFutureCards,
+    isExploding,
+    winner,
+    gameActivity,
+    selectedCards,
+    targetPlayer,
     fetchGame,
     createGame,
     joinGame,
@@ -289,6 +439,12 @@ export const GameProvider = ({ children }) => {
     playCombo,
     seeFuture,
     defuseKitten,
+    selectCard,
+    isSelected,
+    selectTarget,
+    clearSelections,
+    playSelectedCards,
+    getPlayerName,
   };
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

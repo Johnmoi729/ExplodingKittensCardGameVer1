@@ -1,0 +1,42 @@
+.error-boundary {
+    padding: 20px;
+    margin: 20px;
+    background-color: #fff3f3;
+    border: 2px solid #e74c3c;
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .error-boundary h2 {
+    color: #e74c3c;
+    margin-top: 0;
+  }
+  
+  .error-boundary details {
+    margin: 20px 0;
+    text-align: left;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+  }
+  
+  .error-boundary summary {
+    cursor: pointer;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  
+  .retry-button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .retry-button:hover {
+    background-color: #2980b9;
+  }

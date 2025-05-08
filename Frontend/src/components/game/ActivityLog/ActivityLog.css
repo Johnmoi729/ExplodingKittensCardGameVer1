@@ -1,0 +1,55 @@
+.activity-log {
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .activity-log-title {
+    padding: 10px 15px;
+    margin: 0;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 1.2rem;
+    color: #333;
+    background-color: #f8f9fa;
+    border-radius: 8px 8px 0 0;
+  }
+  
+  .activity-log-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 15px;
+    max-height: 450px;
+  }
+  
+  .activity-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .activity-time {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 3px;
+  }
+  
+  .activity-text {
+    font-size: 0.95rem;
+    color: #333;
+  }
+  
+  .no-activities {
+    text-align: center;
+    color: #888;
+    padding: 20px 0;
+  }
+  
+  @media (max-width: 768px) {
+    .activity-log-content {
+      max-height: 200px;
+    }
+  }

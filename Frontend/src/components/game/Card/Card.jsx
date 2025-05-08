@@ -1,12 +1,12 @@
 import PropTypes from "prop-types";
-import React from "react";
+import React, { memo } from "react";
 import "./Card.css";
 
 /**
- * Card component representing a game card
+ * Card component representing a game card (memoized for performance)
  * @param {Object} props - Component props
  */
-const Card = ({ card, isPlayable, onPlay, selected, onSelect }) => {
+const Card = memo(({ card, isPlayable, onPlay, selected, onSelect }) => {
   const handleClick = () => {
     if (isPlayable && onPlay) {
       onPlay(card);
@@ -35,14 +35,18 @@ const Card = ({ card, isPlayable, onPlay, selected, onSelect }) => {
         <div className="card-front">
           <h3 className="card-name">{card.name}</h3>
           <div className="card-image-container">
-            <img src={card.imageUrl} alt={card.name} className="card-image" />
+            <img
+              src={card.imageUrl || `/images/${card.type}.png`}
+              alt={card.name}
+              className="card-image"
+            />
           </div>
           <p className="card-effect">{card.effect}</p>
         </div>
       </div>
     </div>
   );
-};
+});
 
 Card.propTypes = {
   card: PropTypes.shape({
@@ -62,5 +66,8 @@ Card.defaultProps = {
   isPlayable: false,
   selected: false,
 };
+
+// Display name for React DevTools
+Card.displayName = "Card";
 
 export default Card;
