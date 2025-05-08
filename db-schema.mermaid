@@ -1,0 +1,52 @@
+erDiagram
+    User {
+        string _id
+        string username
+        string email
+        string passwordHash
+        date createdAt
+        int gamesPlayed
+        int gamesWon
+    }
+    Game {
+        string _id
+        string name
+        array players
+        string status
+        string currentPlayerId
+        int turnNumber
+        date createdAt
+        date updatedAt
+    }
+    GameState {
+        string _id
+        string gameId
+        array drawPile
+        array discardPile
+        object playerHands
+        array explodedPlayers
+        int attackCount
+        string lastAction
+        date updatedAt
+    }
+    Card {
+        string _id
+        string type
+        string name
+        string effect
+        string imageUrl
+    }
+    PlayerAction {
+        string _id
+        string gameId
+        string playerId
+        string actionType
+        array cardsPlayed
+        string targetPlayerId
+        date timestamp
+    }
+
+    User ||--o{ Game : "participates"
+    Game ||--|| GameState : "has"
+    Game ||--o{ PlayerAction : "contains"
+    Card ||--o{ GameState : "used in"

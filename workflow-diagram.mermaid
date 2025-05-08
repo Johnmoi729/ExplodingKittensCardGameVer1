@@ -1,0 +1,46 @@
+flowchart TD
+    A[User Enters Game] --> B{Has Account?}
+    B -->|No| C[Register]
+    B -->|Yes| D[Login]
+    C --> D
+    D --> E[Main Menu]
+    E --> F[Create Game]
+    E --> G[Join Game]
+    F --> H[Waiting Room]
+    G --> H
+    H --> |Enough Players| I[Game Start]
+    I --> J[Initialize Game State]
+    J --> K[Player Turn]
+    
+    K --> L{Play Card?}
+    L -->|Yes| M[Select Card to Play]
+    L -->|No| N[Draw Card]
+    
+    M --> O[Apply Card Effect]
+    O --> P{Card Effect?}
+    P -->|Attack| Q[Next Player Takes 2 Turns]
+    P -->|Skip| R[End Turn Without Drawing]
+    P -->|See Future| S[View Top 3 Cards]
+    P -->|Shuffle| T[Shuffle Draw Pile]
+    P -->|Favor| U[Request Card From Player]
+    P -->|Cat Pair| V[Steal Random Card]
+    
+    S --> K
+    T --> K
+    U --> K
+    V --> K
+    R --> W[Next Player's Turn]
+    
+    N --> X{Drew Exploding Kitten?}
+    X -->|Yes| Y{Has Defuse?}
+    Y -->|Yes| Z[Use Defuse, Place Kitten Back]
+    Y -->|No| AA[Player Explodes, Out Of Game]
+    
+    Z --> W
+    X -->|No| W
+    Q --> W
+    AA --> AB{Players Remaining > 1?}
+    AB -->|Yes| W
+    AB -->|No| AC[Game End - Last Player Wins]
+    
+    W --> K
