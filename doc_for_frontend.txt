@@ -1,0 +1,269 @@
+## Frontend Integration Guide
+
+### Yes, You Can Use a Different Frontend
+
+You can absolutely use a different frontend technology than the one suggested in the proposal. Your backend is designed with a RESTful API and SignalR for real-time communication, making it compatible with any modern frontend framework (React, Angular, Vue, Svelte, or even plain JavaScript).
+
+Below is a comprehensive guide for a frontend developer to integrate with your backend, regardless of the frontend technology they choose.
+
+---
+
+# Exploding Kittens Frontend Integration Guide
+
+This document provides all the necessary details for integrating a frontend application with the Exploding Kittens game backend.
+
+## API Endpoints Overview
+
+### Authentication
+
+- **Register**: `POST /api/auth/register`
+  - Body: `{ username, email, password }`
+  - Returns: User details
+
+- **Login**: `POST /api/auth/login`
+  - Body: `{ username, password }`
+  - Returns: JWT token
+
+### Game Management
+
+- **Get Active Games**: `GET /api/games`
+  - Returns: List of active games
+
+- **Get Game Details**: `GET /api/games/{id}`
+  - Returns: Game details
+
+- **Get Player's Games**: `GET /api/games/player/{playerId}`
+  - Returns: List of games for a player
+
+- **Create Game**: `POST /api/games`
+  - Body: `{ name, hostPlayerId }`
+  - Returns: Created game
+
+- **Join Game**: `POST /api/games/{id}/join`
+  - Body: `"playerId"` (as JSON string)
+  - Returns: Success status
+
+- **Start Game**: `POST /api/games/{id}/start`
+  - Returns: Success status
+
+### Game Actions
+
+- **Play Card**: `POST /api/games/{gameId}/actions/play-card`
+  - Body: `{ playerId, cardId, targetPlayerId? }`
+  - Returns: Updated game state
+
+- **Draw Card**: `POST /api/games/{gameId}/actions/draw-card`
+  - Body: `{ playerId }`
+  - Returns: Updated game state
+
+- **Play Combo**: `POST /api/games/{gameId}/actions/play-combo`
+  - Body: `{ playerId, cardIds[], targetPlayerId }`
+  - Returns: Updated game state
+
+- **Defuse Kitten**: `POST /api/games/{gameId}/actions/defuse-kitten`
+  - Body: `{ playerId, defuseCardId, position }`
+  - Returns: Updated game state
+
+### Game State
+
+- **Get Game State**: `GET /api/games/{gameId}/state`
+  - Returns: Current game state
+
+- **Get Player Game Status**: `GET /api/games/{gameId}/status/{playerId}`
+  - Returns: Player-specific game status
+
+## Authentication Flow
+
+1. **Token Storage**: Store JWT token in localStorage or a secure cookie:
+   ```javascript
+   // After login
+   localStorage.setItem('token', response.token);
+   
+   // For requests
+   headers: {
+     'Authorization': `Bearer ${localStorage.getItem('token')}`
+   }
+   ```
+
+2. **Protected Routes**: Redirect unauthenticated users to login page.
+
+3. **Token Expiration**: Handle 401 responses by redirecting to login.
+
+## Real-time Communication with SignalR
+
+SignalR is used for real-time game updates. Regardless of your frontend framework, you'll need to:
+
+1. **Install the SignalR client**:
+   ```bash
+   # npm
+   npm install @microsoft/signalr
+   
+   # or yarn
+   yarn add @microsoft/signalr
+   ```
+
+2. **Connect to the hub**:
+   ```javascript
+   import * as signalR from '@microsoft/signalr';
+
+   // Create connection
+   const connection = new signalR.HubConnectionBuilder()
+     .withUrl('http://localhost:5009/gamehub', {
+       accessTokenFactory: () => localStorage.getItem('token')
+     })
+     .withAutomaticReconnect()
+     .build();
+   
+   // Start connection
+   await connection.start();
+   
+   // Join game group
+   await connection.invoke('JoinGameGroup', gameId);
+   ```
+
+3. **Subscribe to events**:
+   ```javascript
+   // Listen for game state updates
+   connection.on('GameStateUpdated', (gameState) => {
+     // Update UI with new game state
+   });
+   
+   // Listen for card played notifications
+   connection.on('CardPlayed', ({ playerId, cardName }) => {
+     // Show animation or notification
+   });
+   
+   // Listen for player turn notifications
+   connection.on('PlayerTurn', ({ playerId }) => {
+     // Highlight current player
+   });
+   
+   // Listen for player exploded notifications
+   connection.on('PlayerExploded', ({ playerId }) => {
+     // Show explosion animation
+   });
+   
+   // Listen for game end
+   connection.on('GameEnded', ({ winnerId }) => {
+     // Show winner screen
+   });
+   
+   // For See Future card results (sent only to the player who played it)
+   connection.on('SeeFutureResult', (result) => {
+     // Show the top 3 cards
+   });
+   ```
+
+4. **Clean up connection**:
+   ```javascript
+   // When leaving a game
+   await connection.invoke('LeaveGameGroup', gameId);
+   
+   // When disposing component
+   await connection.stop();
+   ```
+
+## Game Flow Implementation
+
+### 1. User Authentication
+
+Start with authentication flow (register/login) before accessing game features.
+
+### 2. Game Creation and Joining
+
+- Show list of available games from `GET /api/games`
+- Allow creating new games via `POST /api/games`
+- Allow joining games via `POST /api/games/{id}/join`
+
+### 3. Waiting Room
+
+- Display players in the game
+- Host can start the game when enough players have joined
+- Use SignalR to update the player list in real-time
+
+### 4. Game Play
+
+The game follows this sequence:
+1. Initialize the game state from `GET /api/games/{gameId}/state`
+2. On a player's turn, they can:
+   - Play a card via `POST /api/games/{gameId}/actions/play-card`
+   - Play a combo via `POST /api/games/{gameId}/actions/play-combo`
+   - Draw a card via `POST /api/games/{gameId}/actions/draw-card`
+3. When a player draws an Exploding Kitten:
+   - If they have a Defuse card, they can use it via `POST /api/games/{gameId}/actions/defuse-kitten`
+   - Otherwise, they explode and are out of the game
+4. Game continues until only one player remains
+
+## Card Types and Effects
+
+Render cards based on their type and implement corresponding UI for each effect:
+
+- **Exploding Kitten**: Shows explosion UI when drawn
+- **Defuse**: Allows player to survive an Exploding Kitten
+- **Attack**: Ends current player's turn; next player takes 2 turns
+- **Skip**: Ends current player's turn without drawing
+- **Shuffle**: Animates deck shuffling
+- **See Future**: Shows top 3 cards to the player
+- **Favor**: Shows UI for target player to select a card to give
+- **Cat Cards**: Can be played as pairs to steal random cards
+
+## UI Requirements
+
+For a complete implementation, your UI should include:
+
+1. **Card Display**: Visualize cards in hand with appropriate images
+2. **Game Board**: Show player status, draw pile, and discard pile
+3. **Action Area**: Interface for playing cards, targeting other players
+4. **Notifications**: Display game events (e.g., player exploded, shuffle)
+5. **Player Status**: Show which players are active/exploded
+6. **Turn Indicator**: Highlight whose turn it is
+7. **Game Stats**: Display cards remaining, players remaining
+
+## Development Tips
+
+1. **State Management**: Use appropriate state management for your chosen framework:
+   - React: Context API, Redux, or Zustand
+   - Angular: Services and RxJS
+   - Vue: Vuex or Pinia
+   - Svelte: Stores
+
+2. **API Client**: Create a service/client for API calls:
+   ```javascript
+   // Example API client structure
+   const GameApi = {
+     getGames: () => fetch('/api/games', {...}),
+     createGame: (data) => fetch('/api/games', {method: 'POST', ...}),
+     // ...other methods
+   }
+   ```
+
+3. **Error Handling**: Implement consistent error handling for API requests
+   ```javascript
+   // Example error handling
+   const handleApiError = (error) => {
+     if (error.status === 401) {
+       // Handle unauthorized
+       logout();
+       redirect('/login');
+     } else {
+       // Display error message
+       showToast(error.message);
+     }
+   }
+   ```
+
+4. **Responsive Design**: Design for both desktop and mobile experiences
+
+5. **Animations**: Add animations for card plays, explosions, etc. to enhance user experience
+
+## Testing
+
+Implement tests for:
+1. API integration
+2. Game state management
+3. UI components
+4. SignalR event handling
+
+---
+
+This document should provide all the necessary details for a frontend developer to create an interface for your game, regardless of the frontend technology they choose to use. If they have specific questions about API endpoints or real-time communication, they can consult the backend code documentation or this guide for reference.
